@@ -13,7 +13,7 @@ a more user-friendly way.
 """Launch Isaac Sim Simulator first."""
 
 # Example Usage:
-# python scripts/skrl/play.py --task=Isaac-Velocity-Flat-Unitree-Go2-Play-v0 --num_envs=16 --checkpoint=logs/skrl/unitree_go2_flat/2026-02-08_12-29-12_ppo_torch/checkpoints/best_agent.pt 
+# python scripts/skrl/play.py --task=Random-Agent-Unitree-Go2-Play-v0 --num_envs=16 --checkpoint=logs/skrl/go2_flat_ppo/2026-02-08_14-15-29_ppo_torch/checkpoints/best_agent.pt
 
 
 
@@ -120,7 +120,7 @@ import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
-# import FP16831.tasks  # noqa: F401
+import FP16831.tasks  # noqa: F401
 
 # config shortcuts
 if args_cli.agent is None:
