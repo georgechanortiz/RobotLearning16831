@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -11,6 +11,11 @@ a more user-friendly way.
 """
 
 """Launch Isaac Sim Simulator first."""
+
+# Example Usage:
+# python scripts/skrl/play.py --task=Isaac-Velocity-Flat-Unitree-Go2-Play-v0 --num_envs=16 --checkpoint=logs/skrl/unitree_go2_flat/2026-02-08_12-29-12_ppo_torch/checkpoints/best_agent.pt 
+
+
 
 import argparse
 import sys
@@ -37,11 +42,11 @@ parser.add_argument(
 )
 parser.add_argument("--checkpoint", type=str, default=None, help="Path to model checkpoint.")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
-parser.add_argument(
-    "--use_pretrained_checkpoint",
-    action="store_true",
-    help="Use the pre-trained checkpoint from Nucleus.",
-)
+# parser.add_argument(
+#     "--use_pretrained_checkpoint",
+#     action="store_true",
+#     help="Use the pre-trained checkpoint from Nucleus.",
+# )
 parser.add_argument(
     "--ml_framework",
     type=str,
@@ -74,13 +79,13 @@ simulation_app = app_launcher.app
 
 """Rest everything follows."""
 
-import gymnasium as gym
 import os
 import random
 import time
-import torch
 
+import gymnasium as gym
 import skrl
+import torch
 from packaging import version
 
 # check for minimum supported skrl version
@@ -105,15 +110,17 @@ from isaaclab.envs import (
     multi_agent_to_single_agent,
 )
 from isaaclab.utils.dict import print_dict
-from isaaclab.utils.pretrained_checkpoint import get_published_pretrained_checkpoint
 
 from isaaclab_rl.skrl import SkrlVecEnvWrapper
+# from isaaclab_rl.utils.pretrained_checkpoint import get_published_pretrained_checkpoint
+
+# heckpoint import get_published_pretrained_checkpoint
 
 import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
-# import mud_dynamics_2.tasks  # noqa: F401
+# import FP16831.tasks  # noqa: F401
 
 # config shortcuts
 if args_cli.agent is None:
@@ -153,12 +160,12 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
     log_root_path = os.path.abspath(log_root_path)
     print(f"[INFO] Loading experiment from directory: {log_root_path}")
     # get checkpoint path
-    if args_cli.use_pretrained_checkpoint:
-        resume_path = get_published_pretrained_checkpoint("skrl", train_task_name)
-        if not resume_path:
-            print("[INFO] Unfortunately a pre-trained checkpoint is currently unavailable for this task.")
-            return
-    elif args_cli.checkpoint:
+    # if args_cli.use_pretrained_checkpoint:
+    #     resume_path = get_published_pretrained_checkpoint("skrl", train_task_name)
+    #     if not resume_path:
+    #         print("[INFO] Unfortunately a pre-trained checkpoint is currently unavailable for this task.")
+    #         return
+    if args_cli.checkpoint:
         resume_path = os.path.abspath(args_cli.checkpoint)
     else:
         resume_path = get_checkpoint_path(
