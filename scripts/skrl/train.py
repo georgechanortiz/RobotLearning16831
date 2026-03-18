@@ -241,9 +241,22 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # wrap around environment for skrl
     env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework)  # same as: `wrap_env(env, wrapper="auto")`
 
-    # DEBUG: verify what action space skrl actually sees
-    print(f"[DEBUG] SkrlVecEnvWrapper action_space: {env.action_space}")
-    print(f"[DEBUG] SkrlVecEnvWrapper unwrapped action_space: {env.unwrapped.action_space}")
+    # Override the action space on the skrl wrapper if --action_clip is set.
+    # SkrlVecEnvWrapper reads action_space from the unwrapped Isaac Lab env (ignoring gym wrappers),
+    # so we must override it here for skrl's agent to see bounded actions.
+    if args_cli.action_clip is not None:
+        import numpy as np
+        clip_val = args_cli.action_clip
+        action_shape = env.action_space.shape
+        bounded_space = gym.spaces.Box(
+            low=np.full(action_shape, -clip_val, dtype=np.float32),
+            high=np.full(action_shape, clip_val, dtype=np.float32),
+            dtype=np.float32,
+        )
+        env._action_space = bounded_space
+        print(f"[INFO] SkrlVecEnvWrapper action_space overridden to [-{clip_val}, {clip_val}]")
+
+    print(f"[DEBUG] Final action_space seen by skrl: {env.action_space}")
 
     # configure and instantiate the skrl runner
     # https://skrl.readthedocs.io/en/latest/api/utils/runner.html
