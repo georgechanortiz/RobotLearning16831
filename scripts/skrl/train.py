@@ -191,19 +191,59 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
         def _clipped_step(action):
             if isinstance(action, torch.Tensor):
-                raw_abs_max = action.abs().max().item()
-                raw_mean = action.abs().mean().item()
+                has_nan = torch.isnan(action).any().item()
+                has_inf = torch.isinf(action).any().item()
+                raw_abs_max = action.abs().max().item() if not has_nan else float('nan')
+                action = torch.nan_to_num(action, nan=0.0, posinf=clip_val, neginf=-clip_val)
                 action = action.clamp(-clip_val, clip_val)
             else:
-                raw_abs_max = float(np.abs(action).max())
-                raw_mean = float(np.abs(action).mean())
+                has_nan = bool(np.isnan(action).any())
+                has_inf = bool(np.isinf(action).any())
+                raw_abs_max = float(np.abs(action).max()) if not has_nan else float('nan')
+                action = np.nan_to_num(action, nan=0.0, posinf=clip_val, neginf=-clip_val)
                 action = np.clip(action, -clip_val, clip_val)
             _step_count[0] += 1
-            if _step_count[0] % 100 == 1:
-                print(f"[DEBUG] step={_step_count[0]} | raw_abs_max={raw_abs_max:.4f} raw_abs_mean={raw_mean:.4f} | clamped to [-{clip_val}, {clip_val}]")
-            return _original_step(action)
+            if _step_count[0] <= 5 or _step_count[0] % 100 == 1:
+                print(f"[DEBUG] step={_step_count[0]} | raw_abs_max={raw_abs_max} nan={has_nan} inf={has_inf} | clamped to [-{clip_val}, {clip_val}]")
+            result = _original_step(action)
+            # Check observations for NaN
+            obs = result[0]
+            if isinstance(obs, dict):
+                for k, v in obs.items():
+                    if isinstance(v, torch.Tensor) and torch.isnan(v).any():
+                        nan_count = torch.isnan(v).sum().item()
+                        print(f"[DEBUG] step={_step_count[0]} | OBS NaN in '{k}': {nan_count}/{v.numel()} elements")
+            elif isinstance(obs, torch.Tensor) and torch.isnan(obs).any():
+                nan_count = torch.isnan(obs).sum().item()
+                print(f"[DEBUG] step={_step_count[0]} | OBS NaN: {nan_count}/{obs.numel()} elements")
+            return result
 
         env.step = _clipped_step
+
+        # Also patch env.reset to check for NaN observations at initialization
+        _original_reset = env.reset
+        def _checked_reset(**kwargs):
+            result = _original_reset(**kwargs)
+            obs = result[0] if isinstance(result, tuple) else result
+            if isinstance(obs, dict):
+                for k, v in obs.items():
+                    if isinstance(v, torch.Tensor):
+                        nan_count = torch.isnan(v).sum().item()
+                        inf_count = torch.isinf(v).sum().item()
+                        print(f"[DEBUG] reset | obs['{k}'] shape={v.shape} nan={nan_count} inf={inf_count} min={v[~torch.isnan(v)].min().item() if nan_count < v.numel() else 'all_nan':.4f} max={v[~torch.isnan(v)].max().item() if nan_count < v.numel() else 'all_nan':.4f}")
+            elif isinstance(obs, torch.Tensor):
+                nan_count = torch.isnan(obs).sum().item()
+                inf_count = torch.isinf(obs).sum().item()
+                print(f"[DEBUG] reset | obs shape={obs.shape} nan={nan_count} inf={inf_count}")
+                if nan_count > 0:
+                    # Print per-feature NaN breakdown (obs is [num_envs, obs_dim])
+                    nan_per_feat = torch.isnan(obs).sum(dim=0)
+                    for i, c in enumerate(nan_per_feat):
+                        if c > 0:
+                            print(f"[DEBUG] reset | obs feature idx={i} has {c.item()} NaN values across envs")
+            return result
+        env.reset = _checked_reset
+
         print(f"[INFO] Action space clipped to [-{clip_val}, {clip_val}] (with tensor clamping)")
 
     print(f"[INFO] Action space: {env.action_space}")
