@@ -175,76 +175,50 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
 
-    # Optionally clip the action space to finite bounds and actually clamp action tensors
+    # Optionally clip the action space to finite bounds using a proper gymnasium wrapper
     if args_cli.action_clip is not None:
         import numpy as np
         import torch
 
         clip_val = args_cli.action_clip
-        low = np.full(env.action_space.shape, -clip_val, dtype=np.float32)
-        high = np.full(env.action_space.shape, clip_val, dtype=np.float32)
-        env.action_space = gym.spaces.Box(low=low, high=high, dtype=np.float32)
 
-        # Monkey-patch env.step to actually clamp actions + log stats
-        _original_step = env.step
-        _step_count = [0]
+        class ClipActionWrapper(gym.Wrapper):
+            """Gymnasium wrapper that overrides action_space with finite bounds and clamps actions."""
+            def __init__(self, env, clip_val):
+                super().__init__(env)
+                self._clip_val = clip_val
+                low = np.full(self.env.action_space.shape, -clip_val, dtype=np.float32)
+                high = np.full(self.env.action_space.shape, clip_val, dtype=np.float32)
+                self._clipped_action_space = gym.spaces.Box(low=low, high=high, dtype=np.float32)
+                self._step_count = 0
 
-        def _clipped_step(action):
-            if isinstance(action, torch.Tensor):
-                has_nan = torch.isnan(action).any().item()
-                has_inf = torch.isinf(action).any().item()
-                raw_abs_max = action.abs().max().item() if not has_nan else float('nan')
-                action = torch.nan_to_num(action, nan=0.0, posinf=clip_val, neginf=-clip_val)
-                action = action.clamp(-clip_val, clip_val)
-            else:
-                has_nan = bool(np.isnan(action).any())
-                has_inf = bool(np.isinf(action).any())
-                raw_abs_max = float(np.abs(action).max()) if not has_nan else float('nan')
-                action = np.nan_to_num(action, nan=0.0, posinf=clip_val, neginf=-clip_val)
-                action = np.clip(action, -clip_val, clip_val)
-            _step_count[0] += 1
-            if _step_count[0] <= 5 or _step_count[0] % 100 == 1:
-                print(f"[DEBUG] step={_step_count[0]} | raw_abs_max={raw_abs_max} nan={has_nan} inf={has_inf} | clamped to [-{clip_val}, {clip_val}]")
-            result = _original_step(action)
-            # Check observations for NaN
-            obs = result[0]
-            if isinstance(obs, dict):
-                for k, v in obs.items():
-                    if isinstance(v, torch.Tensor) and torch.isnan(v).any():
-                        nan_count = torch.isnan(v).sum().item()
-                        print(f"[DEBUG] step={_step_count[0]} | OBS NaN in '{k}': {nan_count}/{v.numel()} elements")
-            elif isinstance(obs, torch.Tensor) and torch.isnan(obs).any():
-                nan_count = torch.isnan(obs).sum().item()
-                print(f"[DEBUG] step={_step_count[0]} | OBS NaN: {nan_count}/{obs.numel()} elements")
-            return result
+            @property
+            def action_space(self):
+                return self._clipped_action_space
 
-        env.step = _clipped_step
+            @action_space.setter
+            def action_space(self, value):
+                self._clipped_action_space = value
 
-        # Also patch env.reset to check for NaN observations at initialization
-        _original_reset = env.reset
-        def _checked_reset(**kwargs):
-            result = _original_reset(**kwargs)
-            obs = result[0] if isinstance(result, tuple) else result
-            if isinstance(obs, dict):
-                for k, v in obs.items():
-                    if isinstance(v, torch.Tensor):
-                        nan_count = torch.isnan(v).sum().item()
-                        inf_count = torch.isinf(v).sum().item()
-                        print(f"[DEBUG] reset | obs['{k}'] shape={v.shape} nan={nan_count} inf={inf_count} min={v[~torch.isnan(v)].min().item() if nan_count < v.numel() else 'all_nan':.4f} max={v[~torch.isnan(v)].max().item() if nan_count < v.numel() else 'all_nan':.4f}")
-            elif isinstance(obs, torch.Tensor):
-                nan_count = torch.isnan(obs).sum().item()
-                inf_count = torch.isinf(obs).sum().item()
-                print(f"[DEBUG] reset | obs shape={obs.shape} nan={nan_count} inf={inf_count}")
-                if nan_count > 0:
-                    # Print per-feature NaN breakdown (obs is [num_envs, obs_dim])
-                    nan_per_feat = torch.isnan(obs).sum(dim=0)
-                    for i, c in enumerate(nan_per_feat):
-                        if c > 0:
-                            print(f"[DEBUG] reset | obs feature idx={i} has {c.item()} NaN values across envs")
-            return result
-        env.reset = _checked_reset
+            def step(self, action):
+                c = self._clip_val
+                if isinstance(action, torch.Tensor):
+                    has_nan = torch.isnan(action).any().item()
+                    raw_abs_max = action.abs().max().item() if not has_nan else float('nan')
+                    action = torch.nan_to_num(action, nan=0.0, posinf=c, neginf=-c)
+                    action = action.clamp(-c, c)
+                else:
+                    has_nan = bool(np.isnan(action).any())
+                    raw_abs_max = float(np.abs(action).max()) if not has_nan else float('nan')
+                    action = np.nan_to_num(action, nan=0.0, posinf=c, neginf=-c)
+                    action = np.clip(action, -c, c)
+                self._step_count += 1
+                if self._step_count <= 5 or self._step_count % 200 == 1:
+                    print(f"[DEBUG] step={self._step_count} | raw_abs_max={raw_abs_max} nan={has_nan} | clamped to [-{c}, {c}]")
+                return self.env.step(action)
 
-        print(f"[INFO] Action space clipped to [-{clip_val}, {clip_val}] (with tensor clamping)")
+        env = ClipActionWrapper(env, clip_val)
+        print(f"[INFO] Action space clipped to [-{clip_val}, {clip_val}] (wrapper)")
 
     print(f"[INFO] Action space: {env.action_space}")
 
