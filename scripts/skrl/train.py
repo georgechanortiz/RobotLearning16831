@@ -38,6 +38,7 @@ parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy 
 parser.add_argument("--export_io_descriptors", action="store_true", default=False, help="Export IO descriptors.")
 parser.add_argument("--ml_framework",type=str,default="torch",choices=["torch", "jax", "jax-numpy"],help="The ML framework used for training the skrl agent.",)
 parser.add_argument("--algorithm",type=str,default="PPO",choices=["AMP", "PPO", "SAC", "IPPO", "MAPPO"],help="The RL algorithm used for training the skrl agent.",)
+parser.add_argument("--action_clip", type=float, default=None, help="Clip action space to [-val, val]. Useful for off-policy algorithms like SAC.")
 
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
@@ -174,10 +175,16 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
 
-    # DEBUG: inspect action space bounds
-    print(f"[DEBUG] Action space: {env.action_space}")
-    print(f"[DEBUG] Action space low:  {env.action_space.low}")
-    print(f"[DEBUG] Action space high: {env.action_space.high}")
+    # Optionally clip the action space to finite bounds
+    if args_cli.action_clip is not None:
+        import numpy as np
+        clip_val = args_cli.action_clip
+        low = np.full(env.action_space.shape, -clip_val, dtype=np.float32)
+        high = np.full(env.action_space.shape, clip_val, dtype=np.float32)
+        env.action_space = gym.spaces.Box(low=low, high=high, dtype=np.float32)
+        print(f"[INFO] Action space clipped to [-{clip_val}, {clip_val}]")
+
+    print(f"[INFO] Action space: {env.action_space}")
 
     # convert to single-agent instance if required by the RL algorithm
     if isinstance(env.unwrapped, DirectMARLEnv) and algorithm in ["ppo"]:
