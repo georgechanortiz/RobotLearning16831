@@ -207,6 +207,14 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # wrap around environment for skrl
     env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework)  # same as: `wrap_env(env, wrapper="auto")`
 
+    # SkrlVecEnvWrapper reads action_space from the unwrapped Isaac Lab env, ignoring
+    # gym-level overrides.  Re-apply finite bounds here so skrl's agent sees them.
+    # See: https://github.com/isaac-sim/IsaacLab/issues/3064
+    if algorithm in ["sac"]:
+        import numpy as np
+        action_dim = env.action_space.shape
+        env._action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=action_dim, dtype=np.float32)
+
     print(f"[DEBUG] skrl wrapper action_space: {env.action_space}")
     print(f"[DEBUG] skrl wrapper action_space sample: {env.action_space.sample()}")
 
