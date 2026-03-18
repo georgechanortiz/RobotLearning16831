@@ -241,6 +241,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # wrap around environment for skrl
     env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework)  # same as: `wrap_env(env, wrapper="auto")`
 
+    # DEBUG: verify what action space skrl actually sees
+    print(f"[DEBUG] SkrlVecEnvWrapper action_space: {env.action_space}")
+    print(f"[DEBUG] SkrlVecEnvWrapper unwrapped action_space: {env.unwrapped.action_space}")
+
     # configure and instantiate the skrl runner
     # https://skrl.readthedocs.io/en/latest/api/utils/runner.html
     runner = Runner(env, agent_cfg)

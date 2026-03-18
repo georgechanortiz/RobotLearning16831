@@ -77,8 +77,8 @@ agent:
   learning_rate_scheduler_kwargs: null
   state_preprocessor: RunningStandardScaler
   state_preprocessor_kwargs: null
-  random_timesteps: 1           # initial random exploration steps
-  learning_starts: 1            # start learning after this many steps
+  random_timesteps: 100         # initial random exploration steps (fills replay buffer)
+  learning_starts: 100          # start learning after this many steps
   grad_norm_clip: 1.0
   learn_entropy: True            # automatic entropy tuning
   entropy_learning_rate: 1.0e-3
