@@ -7,7 +7,7 @@ models:
   separate: True
   policy:  # see gaussian_model parameters
     class: GaussianMixin
-    clip_actions: False
+    clip_actions: True
     clip_log_std: True
     min_log_std: -5.0
     max_log_std: 2.0
@@ -79,7 +79,7 @@ agent:
   state_preprocessor_kwargs: null
   random_timesteps: 1           # initial random exploration steps
   learning_starts: 1            # start learning after this many steps
-  grad_norm_clip: 0
+  grad_norm_clip: 1.0
   learn_entropy: True            # automatic entropy tuning
   entropy_learning_rate: 1.0e-3
   initial_entropy_value: 1.0
