@@ -175,14 +175,36 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
 
-    # Optionally clip the action space to finite bounds
+    # Optionally clip the action space to finite bounds and actually clamp action tensors
     if args_cli.action_clip is not None:
         import numpy as np
+        import torch
+
         clip_val = args_cli.action_clip
         low = np.full(env.action_space.shape, -clip_val, dtype=np.float32)
         high = np.full(env.action_space.shape, clip_val, dtype=np.float32)
         env.action_space = gym.spaces.Box(low=low, high=high, dtype=np.float32)
-        print(f"[INFO] Action space clipped to [-{clip_val}, {clip_val}]")
+
+        # Monkey-patch env.step to actually clamp actions + log stats
+        _original_step = env.step
+        _step_count = [0]
+
+        def _clipped_step(action):
+            if isinstance(action, torch.Tensor):
+                raw_abs_max = action.abs().max().item()
+                raw_mean = action.abs().mean().item()
+                action = action.clamp(-clip_val, clip_val)
+            else:
+                raw_abs_max = float(np.abs(action).max())
+                raw_mean = float(np.abs(action).mean())
+                action = np.clip(action, -clip_val, clip_val)
+            _step_count[0] += 1
+            if _step_count[0] % 100 == 1:
+                print(f"[DEBUG] step={_step_count[0]} | raw_abs_max={raw_abs_max:.4f} raw_abs_mean={raw_mean:.4f} | clamped to [-{clip_val}, {clip_val}]")
+            return _original_step(action)
+
+        env.step = _clipped_step
+        print(f"[INFO] Action space clipped to [-{clip_val}, {clip_val}] (with tensor clamping)")
 
     print(f"[INFO] Action space: {env.action_space}")
 
