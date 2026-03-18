@@ -38,7 +38,6 @@ parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy 
 parser.add_argument("--export_io_descriptors", action="store_true", default=False, help="Export IO descriptors.")
 parser.add_argument("--ml_framework",type=str,default="torch",choices=["torch", "jax", "jax-numpy"],help="The ML framework used for training the skrl agent.",)
 parser.add_argument("--algorithm",type=str,default="PPO",choices=["AMP", "PPO", "SAC", "IPPO", "MAPPO"],help="The RL algorithm used for training the skrl agent.",)
-parser.add_argument("--action_clip", type=float, default=None, help="Clip action space to [-val, val]. Useful for off-policy algorithms like SAC.")
 
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
@@ -175,51 +174,6 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
 
-    # Optionally clip the action space to finite bounds using a proper gymnasium wrapper
-    if args_cli.action_clip is not None:
-        import numpy as np
-        import torch
-
-        clip_val = args_cli.action_clip
-
-        class ClipActionWrapper(gym.Wrapper):
-            """Gymnasium wrapper that overrides action_space with finite bounds and clamps actions."""
-            def __init__(self, env, clip_val):
-                super().__init__(env)
-                self._clip_val = clip_val
-                low = np.full(self.env.action_space.shape, -clip_val, dtype=np.float32)
-                high = np.full(self.env.action_space.shape, clip_val, dtype=np.float32)
-                self._clipped_action_space = gym.spaces.Box(low=low, high=high, dtype=np.float32)
-                self._step_count = 0
-
-            @property
-            def action_space(self):
-                return self._clipped_action_space
-
-            @action_space.setter
-            def action_space(self, value):
-                self._clipped_action_space = value
-
-            def step(self, action):
-                c = self._clip_val
-                if isinstance(action, torch.Tensor):
-                    has_nan = torch.isnan(action).any().item()
-                    raw_abs_max = action.abs().max().item() if not has_nan else float('nan')
-                    action = torch.nan_to_num(action, nan=0.0, posinf=c, neginf=-c)
-                    action = action.clamp(-c, c)
-                else:
-                    has_nan = bool(np.isnan(action).any())
-                    raw_abs_max = float(np.abs(action).max()) if not has_nan else float('nan')
-                    action = np.nan_to_num(action, nan=0.0, posinf=c, neginf=-c)
-                    action = np.clip(action, -c, c)
-                self._step_count += 1
-                if self._step_count <= 5 or self._step_count % 200 == 1:
-                    print(f"[DEBUG] step={self._step_count} | raw_abs_max={raw_abs_max} nan={has_nan} | clamped to [-{c}, {c}]")
-                return self.env.step(action)
-
-        env = ClipActionWrapper(env, clip_val)
-        print(f"[INFO] Action space clipped to [-{clip_val}, {clip_val}] (wrapper)")
-
     print(f"[INFO] Action space: {env.action_space}")
 
     # convert to single-agent instance if required by the RL algorithm
@@ -240,23 +194,6 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     # wrap around environment for skrl
     env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework)  # same as: `wrap_env(env, wrapper="auto")`
-
-    # Override the action space on the skrl wrapper if --action_clip is set.
-    # SkrlVecEnvWrapper reads action_space from the unwrapped Isaac Lab env (ignoring gym wrappers),
-    # so we must override it here for skrl's agent to see bounded actions.
-    if args_cli.action_clip is not None:
-        import numpy as np
-        clip_val = args_cli.action_clip
-        action_shape = env.action_space.shape
-        bounded_space = gym.spaces.Box(
-            low=np.full(action_shape, -clip_val, dtype=np.float32),
-            high=np.full(action_shape, clip_val, dtype=np.float32),
-            dtype=np.float32,
-        )
-        env._action_space = bounded_space
-        print(f"[INFO] SkrlVecEnvWrapper action_space overridden to [-{clip_val}, {clip_val}]")
-
-    print(f"[DEBUG] Final action_space seen by skrl: {env.action_space}")
 
     # configure and instantiate the skrl runner
     # https://skrl.readthedocs.io/en/latest/api/utils/runner.html

@@ -48,7 +48,7 @@ gym.register(
 
 gym.register(
     id="SAC-Unitree-Go2-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=f"{__name__}.bounded_env:BoundedManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.flat_env_sac_cfg:UnitreeGo2SacFlatEnvCfg",
@@ -58,7 +58,7 @@ gym.register(
 
 gym.register(
     id="SAC-Unitree-Go2-Play-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point=f"{__name__}.bounded_env:BoundedManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.flat_env_sac_cfg:UnitreeGo2SacFlatEnvCfg_PLAY",
