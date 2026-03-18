@@ -37,7 +37,7 @@ parser.add_argument("--checkpoint", type=str, default=None, help="Path to model 
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
 parser.add_argument("--export_io_descriptors", action="store_true", default=False, help="Export IO descriptors.")
 parser.add_argument("--ml_framework",type=str,default="torch",choices=["torch", "jax", "jax-numpy"],help="The ML framework used for training the skrl agent.",)
-parser.add_argument("--algorithm",type=str,default="PPO",choices=["AMP", "PPO", "IPPO", "MAPPO"],help="The RL algorithm used for training the skrl agent.",)
+parser.add_argument("--algorithm",type=str,default="PPO",choices=["AMP", "PPO", "SAC", "IPPO", "MAPPO"],help="The RL algorithm used for training the skrl agent.",)
 
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
