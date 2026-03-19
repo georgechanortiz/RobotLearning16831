@@ -87,6 +87,7 @@ from isaaclab.utils.dict import print_dict
 from isaaclab.utils.io import dump_yaml
 
 from isaaclab_rl.skrl import SkrlVecEnvWrapper
+from skrl.envs.wrappers.torch import wrap_env
 
 import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils.hydra import hydra_task_config
@@ -174,19 +175,15 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
 
-    print(f"[INFO] Action space: {env.action_space}")
-
     # For off-policy algorithms (e.g. SAC), ManagerBasedRLEnv exposes (-inf, inf) action
     # bounds which causes NaN samples during random exploration.  Override with finite
     # [-1, 1] bounds so that env.action_space.sample() produces valid actions.
     # See: https://github.com/isaac-sim/IsaacLab/issues/3064
-    if algorithm in ["sac"]:
-        import numpy as np
-        action_dim = env.action_space.shape
-        env.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=action_dim, dtype=np.float32)
-        print(f"[INFO] Action space overridden to finite bounds for {algorithm.upper()}: {env.action_space}")
-
-    print(f"[INFO] Action space: {env.action_space}")
+    # if algorithm in ["sac"]:
+    #     import numpy as np
+    #     action_dim = env.action_space.shape
+    #     env.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=action_dim, dtype=np.float32)
+    #     print(f"[INFO] Action space overridden to finite bounds for {algorithm.upper()}: {env.action_space}")
 
     # convert to single-agent instance if required by the RL algorithm
     if isinstance(env.unwrapped, DirectMARLEnv) and algorithm in ["ppo"]:
@@ -205,18 +202,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         env = gym.wrappers.RecordVideo(env, **video_kwargs)
 
     # wrap around environment for skrl
-    env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework)  # same as: `wrap_env(env, wrapper="auto")`
-
-    # SkrlVecEnvWrapper reads action_space from the unwrapped Isaac Lab env, ignoring
-    # gym-level overrides.  Re-apply finite bounds here so skrl's agent sees them.
-    # See: https://github.com/isaac-sim/IsaacLab/issues/3064
-    if algorithm in ["sac"]:
-        import numpy as np
-        action_dim = env.action_space.shape
-        env._action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=action_dim, dtype=np.float32)
-
-    print(f"[DEBUG] skrl wrapper action_space: {env.action_space}")
-    print(f"[DEBUG] skrl wrapper action_space sample: {env.action_space.sample()}")
+    # env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework)  # same as: `wrap_env(env, wrapper="auto")`
+    env = wrap_env(env)
 
     # configure and instantiate the skrl runner
     # https://skrl.readthedocs.io/en/latest/api/utils/runner.html
