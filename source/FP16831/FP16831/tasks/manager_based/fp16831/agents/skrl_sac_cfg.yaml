@@ -91,9 +91,9 @@ agent:
   learning_starts: 1000          # start learning after this many steps
   grad_norm_clip: 1.0
   learn_entropy: True            # automatic entropy tuning
-  entropy_learning_rate: 1.0e-4
-  initial_entropy_value: 1.0e-3
-  target_entropy: 1.0e-3 # None = -dim(action_space)
+  entropy_learning_rate: 1.0e-3
+  initial_entropy_value: 1.0
+  target_entropy: null # None = -dim(action_space)
   rewards_shaper_scale: 1.0
   # logging and checkpoint
   experiment:
