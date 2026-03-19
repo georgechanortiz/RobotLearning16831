@@ -63,7 +63,7 @@ models:
 # https://skrl.readthedocs.io/en/latest/api/memories/random.html
 memory:
   class: RandomMemory
-  memory_size: 100000  # replay buffer size per env
+  memory_size: 10000  # replay buffer size per env
 
 
 # SAC agent configuration (field names are from SAC_DEFAULT_CONFIG)
