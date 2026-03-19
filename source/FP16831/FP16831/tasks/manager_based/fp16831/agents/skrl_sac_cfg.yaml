@@ -1,5 +1,8 @@
 seed: 42
 
+# Action space clipping for ManagerBasedRLEnv (which exposes unbounded actions).
+# Set to null to disable. See: https://github.com/isaac-sim/IsaacLab/issues/3064
+action_clip: 1.0
 
 # Models are instantiated using skrl's model instantiator utility
 # https://skrl.readthedocs.io/en/latest/api/utils/model_instantiators.html
@@ -71,8 +74,8 @@ agent:
   batch_size: 4096
   discount_factor: 0.99
   polyak: 0.005                  # soft update coefficient (tau)
-  actor_learning_rate: 1.0e-4
-  critic_learning_rate: 1.0e-4
+  actor_learning_rate: 5.0e-4
+  critic_learning_rate: 5.0e-4
   learning_rate_scheduler: null
   learning_rate_scheduler_kwargs: null
   state_preprocessor: RunningStandardScaler
@@ -81,7 +84,7 @@ agent:
   learning_starts: 100          # start learning after this many steps
   grad_norm_clip: 1.0
   learn_entropy: True            # automatic entropy tuning
-  entropy_learning_rate: 1.0e-3
+  entropy_learning_rate: 5.0e-3
   initial_entropy_value: 1.0
   target_entropy: null           # None = -dim(action_space)
   rewards_shaper_scale: 1.0
@@ -97,5 +100,5 @@ agent:
 # https://skrl.readthedocs.io/en/latest/api/trainers/sequential.html
 trainer:
   class: SequentialTrainer
-  timesteps: 1600
+  timesteps: 160000
   environment_info: log

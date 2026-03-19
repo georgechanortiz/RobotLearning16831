@@ -175,20 +175,25 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
 
+    # THEO:
     # For off-policy algorithms (e.g. SAC), ManagerBasedRLEnv exposes (-inf, inf) action
     # bounds which causes NaN samples during random exploration.  Override with finite
-    # [-1, 1] bounds so that env.action_space.sample() produces valid actions.
+    # bounds so that env.action_space.sample() produces valid actions.
     # The skrl IsaacLabWrapper reads single_action_space in __init__, so we must
     # override it on the unwrapped env *before* wrapping.
     # See: https://github.com/isaac-sim/IsaacLab/issues/3064
-    if algorithm in ["sac"]:
+    # See: https://github.com/Toni-SM/skrl/blob/636936f3ac49c6d2260bd130d72b789ca6dfe42b/skrl/envs/wrappers/torch/base.py
+    # See: https://github.com/Toni-SM/skrl/blob/636936f3ac49c6d2260bd130d72b789ca6dfe42b/skrl/envs/wrappers/torch/isaaclab_envs.py
+    action_clip = agent_cfg.get("action_clip", None)
+    if action_clip is not None:
         import numpy as np
+        clip_val = float(action_clip)
         unwrapped = env.unwrapped
         single_shape = unwrapped.single_action_space.shape if hasattr(unwrapped, "single_action_space") else unwrapped.action_space.shape
-        bounded_space = gym.spaces.Box(low=-1.0, high=1.0, shape=single_shape, dtype=np.float32)
+        bounded_space = gym.spaces.Box(low=-clip_val, high=clip_val, shape=single_shape, dtype=np.float32)
         unwrapped.single_action_space = bounded_space
         unwrapped.action_space = bounded_space
-        print(f"[INFO] Action space overridden to finite bounds for {algorithm.upper()}: {bounded_space}")
+        print(f"[INFO] Action space overridden to [-{clip_val}, {clip_val}] (from agent config): {bounded_space}")
 
     # convert to single-agent instance if required by the RL algorithm
     if isinstance(env.unwrapped, DirectMARLEnv) and algorithm in ["ppo"]:
