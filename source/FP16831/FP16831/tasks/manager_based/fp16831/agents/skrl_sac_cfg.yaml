@@ -78,7 +78,7 @@ memory:
 agent:
   class: SAC
   gradient_steps: 64
-  batch_size: 100
+  batch_size: 256
   discount_factor: 0.99
   polyak: 0.005                  # soft update coefficient (tau)
   actor_learning_rate: 3.0e-4
@@ -87,8 +87,8 @@ agent:
   learning_rate_scheduler_kwargs: null
   state_preprocessor: RunningStandardScaler
   state_preprocessor_kwargs: null
-  random_timesteps: 1000        # initial random exploration steps (fills replay buffer)
-  learning_starts: 1000          # start learning after this many steps
+  random_timesteps: 100        # initial random exploration steps (fills replay buffer)
+  learning_starts: 100          # start learning after this many steps
   grad_norm_clip: 1.0
   learn_entropy: True            # automatic entropy tuning
   entropy_learning_rate: 6.0e-3
