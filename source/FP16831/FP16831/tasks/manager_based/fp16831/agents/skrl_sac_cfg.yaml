@@ -19,7 +19,7 @@ models:
     class: GaussianMixin
     clip_actions: False
     clip_log_std: True
-    min_log_std: -7.0
+    min_log_std: -20.0
     max_log_std: 2.0
     initial_log_std: 0.0
     network:
@@ -70,7 +70,7 @@ models:
 # https://skrl.readthedocs.io/en/latest/api/memories/random.html
 memory:
   class: RandomMemory
-  memory_size: 10000  # timesteps (rows); total capacity = 1000 * 4096 envs = ~4M transitions
+  memory_size: 1000  # timesteps (rows); total capacity = 1000 * 4096 envs = ~4M transitions
 
 
 # SAC agent configuration (field names are from SAC_DEFAULT_CONFIG)
@@ -107,5 +107,5 @@ agent:
 # https://skrl.readthedocs.io/en/latest/api/trainers/sequential.html
 trainer:
   class: SequentialTrainer
-  timesteps: 1600000
+  timesteps: 16000
   environment_info: log
