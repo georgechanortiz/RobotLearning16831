@@ -179,11 +179,11 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # bounds which causes NaN samples during random exploration.  Override with finite
     # [-1, 1] bounds so that env.action_space.sample() produces valid actions.
     # See: https://github.com/isaac-sim/IsaacLab/issues/3064
-    # if algorithm in ["sac"]:
-    #     import numpy as np
-    #     action_dim = env.action_space.shape
-    #     env.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=action_dim, dtype=np.float32)
-    #     print(f"[INFO] Action space overridden to finite bounds for {algorithm.upper()}: {env.action_space}")
+    if algorithm in ["sac"]:
+        import numpy as np
+        action_dim = env.action_space.shape
+        env.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=action_dim, dtype=np.float32)
+        print(f"[INFO] Action space overridden to finite bounds for {algorithm.upper()}: {env.action_space}")
 
     # convert to single-agent instance if required by the RL algorithm
     if isinstance(env.unwrapped, DirectMARLEnv) and algorithm in ["ppo"]:
