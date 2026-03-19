@@ -2,7 +2,7 @@ seed: 42
 
 # Action space clipping for ManagerBasedRLEnv (which exposes unbounded actions).
 # Set to null to disable. See: https://github.com/isaac-sim/IsaacLab/issues/3064
-action_clip: 2.0
+action_clip: 5.0
 
 # Models are instantiated using skrl's model instantiator utility
 # https://skrl.readthedocs.io/en/latest/api/utils/model_instantiators.html
