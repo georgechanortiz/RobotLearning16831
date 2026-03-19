@@ -70,8 +70,7 @@ models:
 # https://skrl.readthedocs.io/en/latest/api/memories/random.html
 memory:
   class: RandomMemory
-  memory_size: 1000000  # replay buffer size per env
-  num_envs: 1
+  memory_size: 5000  # timesteps (rows); total capacity = 5000 * 2048 envs = ~10M transitions
 
 
 # SAC agent configuration (field names are from SAC_DEFAULT_CONFIG)
