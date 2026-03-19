@@ -34,7 +34,7 @@ models:
     network:
       - name: net
         input: OBSERVATIONS_ACTIONS
-        layers: [256, 256]
+        layers: [256, 256, 256]
         activations: relu
     output: ONE
   critic_2:  # see deterministic_model parameters
@@ -43,7 +43,7 @@ models:
     network:
       - name: net
         input: OBSERVATIONS_ACTIONS
-        layers: [256, 256]
+        layers: [256, 256, 256]
         activations: relu
     output: ONE
   target_critic_1:  # see deterministic_model parameters
@@ -52,7 +52,7 @@ models:
     network:
       - name: net
         input: OBSERVATIONS_ACTIONS
-        layers: [256, 256]
+        layers: [256, 256, 256]
         activations: relu
     output: ONE
   target_critic_2:  # see deterministic_model parameters
@@ -61,7 +61,7 @@ models:
     network:
       - name: net
         input: OBSERVATIONS_ACTIONS
-        layers: [256, 256]
+        layers: [256, 256, 256]
         activations: relu
     output: ONE
 
@@ -70,7 +70,7 @@ models:
 # https://skrl.readthedocs.io/en/latest/api/memories/random.html
 memory:
   class: RandomMemory
-  memory_size: 1000  # timesteps (rows); total capacity = 1000 * 4096 envs = ~4M transitions
+  memory_size: 10000  # timesteps (rows); total capacity = 1000 * 4096 envs = ~4M transitions
 
 
 # SAC agent configuration (field names are from SAC_DEFAULT_CONFIG)
@@ -87,8 +87,8 @@ agent:
   learning_rate_scheduler_kwargs: null
   state_preprocessor: RunningStandardScaler
   state_preprocessor_kwargs: null
-  random_timesteps: 500        # initial random exploration steps (fills replay buffer)
-  learning_starts: 500          # start learning after this many steps
+  random_timesteps: 1000        # initial random exploration steps (fills replay buffer)
+  learning_starts: 1000          # start learning after this many steps
   grad_norm_clip: 1.0
   learn_entropy: True            # automatic entropy tuning
   entropy_learning_rate: 1.0e-4
