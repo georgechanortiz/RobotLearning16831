@@ -34,7 +34,7 @@ models:
     network:
       - name: net
         input: OBSERVATIONS_ACTIONS
-        layers: [256, 256, 256]
+        layers: [256, 256]
         activations: relu
     output: ONE
   critic_2:  # see deterministic_model parameters
@@ -43,7 +43,7 @@ models:
     network:
       - name: net
         input: OBSERVATIONS_ACTIONS
-        layers: [256, 256, 256]
+        layers: [256, 256]
         activations: relu
     output: ONE
   target_critic_1:  # see deterministic_model parameters
@@ -52,7 +52,7 @@ models:
     network:
       - name: net
         input: OBSERVATIONS_ACTIONS
-        layers: [256, 256, 256]
+        layers: [256, 256]
         activations: relu
     output: ONE
   target_critic_2:  # see deterministic_model parameters
@@ -61,7 +61,7 @@ models:
     network:
       - name: net
         input: OBSERVATIONS_ACTIONS
-        layers: [256, 256, 256]
+        layers: [256, 256]
         activations: relu
     output: ONE
 
