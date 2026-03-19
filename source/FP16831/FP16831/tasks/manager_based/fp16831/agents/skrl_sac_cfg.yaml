@@ -1,5 +1,9 @@
 seed: 42
 
+
+# THEO: tuning log
+# Need to decrease initial_log_std to prevent erratic behavior right when training starts
+
 # Action space clipping for ManagerBasedRLEnv (which exposes unbounded actions).
 # Set to null to disable. See: https://github.com/isaac-sim/IsaacLab/issues/3064
 action_clip: 1.0
@@ -14,7 +18,7 @@ models:
     clip_log_std: True
     min_log_std: -5.0
     max_log_std: 2.0
-    initial_log_std: -1.0
+    initial_log_std: -5.0
     network:
       - name: net
         input: OBSERVATIONS
