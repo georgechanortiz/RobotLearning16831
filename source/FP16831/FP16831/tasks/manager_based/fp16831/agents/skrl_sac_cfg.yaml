@@ -2,7 +2,7 @@ seed: 42
 
 # Action space clipping for ManagerBasedRLEnv (which exposes unbounded actions).
 # Set to null to disable. See: https://github.com/isaac-sim/IsaacLab/issues/3064
-action_clip: 5.0
+action_clip: 1.0
 
 # Models are instantiated using skrl's model instantiator utility
 # https://skrl.readthedocs.io/en/latest/api/utils/model_instantiators.html
@@ -63,7 +63,7 @@ models:
 # https://skrl.readthedocs.io/en/latest/api/memories/random.html
 memory:
   class: RandomMemory
-  memory_size: 15625  # replay buffer size per env
+  memory_size: 100000  # replay buffer size per env
 
 
 # SAC agent configuration (field names are from SAC_DEFAULT_CONFIG)
@@ -74,17 +74,17 @@ agent:
   batch_size: 4096
   discount_factor: 0.99
   polyak: 0.005                  # soft update coefficient (tau)
-  actor_learning_rate: 5.0e-4
-  critic_learning_rate: 5.0e-4
+  actor_learning_rate: 3.0e-4
+  critic_learning_rate: 3.0e-4
   learning_rate_scheduler: null
   learning_rate_scheduler_kwargs: null
   state_preprocessor: RunningStandardScaler
   state_preprocessor_kwargs: null
-  random_timesteps: 100         # initial random exploration steps (fills replay buffer)
-  learning_starts: 100          # start learning after this many steps
+  random_timesteps: 1000        # initial random exploration steps (fills replay buffer)
+  learning_starts: 1000          # start learning after this many steps
   grad_norm_clip: 1.0
   learn_entropy: True            # automatic entropy tuning
-  entropy_learning_rate: 5.0e-3
+  entropy_learning_rate: 1.0e-3
   initial_entropy_value: 1.0
   target_entropy: null           # None = -dim(action_space)
   rewards_shaper_scale: 1.0

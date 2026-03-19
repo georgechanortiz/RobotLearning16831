@@ -16,7 +16,7 @@ class UnitreeGo2SacFlatEnvCfg(UnitreeGo2RandFlatEnvCfg):
 
         # remove base_contact termination so SAC can explore without
         # immediate episode termination from random initial actions
-        # self.terminations.base_contact = None
+        self.terminations.base_contact = None
 
 
 @configclass
