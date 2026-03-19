@@ -178,12 +178,17 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # For off-policy algorithms (e.g. SAC), ManagerBasedRLEnv exposes (-inf, inf) action
     # bounds which causes NaN samples during random exploration.  Override with finite
     # [-1, 1] bounds so that env.action_space.sample() produces valid actions.
+    # The skrl IsaacLabWrapper reads single_action_space in __init__, so we must
+    # override it on the unwrapped env *before* wrapping.
     # See: https://github.com/isaac-sim/IsaacLab/issues/3064
     if algorithm in ["sac"]:
         import numpy as np
-        action_dim = env.action_space.shape
-        env.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=action_dim, dtype=np.float32)
-        print(f"[INFO] Action space overridden to finite bounds for {algorithm.upper()}: {env.action_space}")
+        unwrapped = env.unwrapped
+        single_shape = unwrapped.single_action_space.shape if hasattr(unwrapped, "single_action_space") else unwrapped.action_space.shape
+        bounded_space = gym.spaces.Box(low=-1.0, high=1.0, shape=single_shape, dtype=np.float32)
+        unwrapped.single_action_space = bounded_space
+        unwrapped.action_space = bounded_space
+        print(f"[INFO] Action space overridden to finite bounds for {algorithm.upper()}: {bounded_space}")
 
     # convert to single-agent instance if required by the RL algorithm
     if isinstance(env.unwrapped, DirectMARLEnv) and algorithm in ["ppo"]:
@@ -202,9 +207,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         env = gym.wrappers.RecordVideo(env, **video_kwargs)
 
     # wrap around environment for skrl
-    # env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework)  # same as: `wrap_env(env, wrapper="auto")`
     env = wrap_env(env)
-    env._action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=env.action_space.shape, dtype=np.float32)
 
     print(f"[INFO] Environment wrapped for skrl: {env}")
     print(f"[INFO] Environment action space: {env.action_space}")
