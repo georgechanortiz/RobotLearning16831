@@ -59,7 +59,7 @@ class UnitreeGo2RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.dof_acc_l2.weight = -2.5e-7
 
         # terminations
-        self.terminations.base_contact.params["sensor_cfg"].body_names = "base|.*_(thigh|calf)"
+        self.terminations.base_contact.params["sensor_cfg"].body_names = "Head_upper|Head_lower|base|.*_(thigh|calf)"
 
 
 @configclass
