@@ -25,8 +25,8 @@ models:
     network:
       - name: net
         input: OBSERVATIONS
-        layers: [256, 256, 256]
-        activations: relu
+        layers: [512, 256, 128]
+        activations: elu
     output: ACTIONS
   critic_1:  # see deterministic_model parameters
     class: DeterministicMixin
