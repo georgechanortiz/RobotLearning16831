@@ -77,7 +77,7 @@ memory:
 # https://skrl.readthedocs.io/en/latest/api/agents/sac.html
 agent:
   class: SAC
-  gradient_steps: 1
+  gradient_steps: 512
   batch_size: 4096
   discount_factor: 0.99
   polyak: 0.005                  # soft update coefficient (tau)
@@ -87,8 +87,8 @@ agent:
   learning_rate_scheduler_kwargs: null
   state_preprocessor: RunningStandardScaler
   state_preprocessor_kwargs: null
-  random_timesteps: 1000        # initial random exploration steps (fills replay buffer)
-  learning_starts: 1000          # start learning after this many steps
+  random_timesteps: 100        # initial random exploration steps (fills replay buffer)
+  learning_starts: 100          # start learning after this many steps
   grad_norm_clip: 1.0
   learn_entropy: True            # automatic entropy tuning
   entropy_learning_rate: 1.0e-3
