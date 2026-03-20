@@ -14,7 +14,7 @@ class UnitreeGo2SacFlatEnvCfg(UnitreeGo2RandFlatEnvCfg):
         # post init of parent
         super().__post_init__()
 
-        self.rewards.flat_orientation_l2.weight = -5.0
+        # self.rewards.flat_orientation_l2.weight = -5.0
 
         # remove base_contact termination so SAC can explore without
         # immediate episode termination from random initial actions
