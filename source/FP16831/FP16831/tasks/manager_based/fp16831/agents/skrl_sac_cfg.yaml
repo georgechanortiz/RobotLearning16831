@@ -3,6 +3,8 @@ seed: 42
 
 # THEO: tuning log
 # Need to decrease initial_log_std to prevent erratic behavior right when training starts
+# Also really need the early termination when anything not foot touches the ground, to prevent
+# robots from getting stuck sitting on their legs / head
 
 # https://araffin.github.io/post/sac-massive-sim/
 # https://araffin.github.io/post/tune-sac-isaac-sim/
