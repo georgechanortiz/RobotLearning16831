@@ -92,7 +92,7 @@ agent:
   grad_norm_clip: 1.0
   learn_entropy: True            # automatic entropy tuning
   entropy_learning_rate: 1.0e-4
-  initial_entropy_value: 1.0
+  initial_entropy_value: -12.0
   target_entropy: null # None = -dim(action_space)
   rewards_shaper_scale: 1.0
   # logging and checkpoint
