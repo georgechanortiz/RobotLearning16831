@@ -102,12 +102,12 @@ agent:
     directory: "go2_flat_sac"
     experiment_name: ""
     write_interval: 100
-    checkpoint_interval: 2000
+    checkpoint_interval: 1000
 
 
 # Sequential trainer
 # https://skrl.readthedocs.io/en/latest/api/trainers/sequential.html
 trainer:
   class: SequentialTrainer
-  timesteps: 16000
+  timesteps: 4000
   environment_info: log
