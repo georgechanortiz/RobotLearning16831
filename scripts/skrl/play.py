@@ -234,6 +234,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
             else:
                 actions = outputs[-1].get("mean_actions", outputs[0])
             # env stepping
+            print(f"actions: {actions}")
             obs, _, _, _, _ = env.step(actions)
         if args_cli.video:
             timestep += 1
