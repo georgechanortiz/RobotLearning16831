@@ -219,6 +219,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
     # reset environment
     obs, _ = env.reset()
     timestep = 0
+
+    print(f"obs: {obs}")
     # simulate environment
     while simulation_app.is_running():
         start_time = time.time()
@@ -227,6 +229,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
         with torch.inference_mode():
             # agent stepping
             outputs = runner.agent.act(obs, timestep=0, timesteps=0)
+            print(f"outputs: {outputs}")
             # - multi-agent (deterministic) actions
             if hasattr(env, "possible_agents"):
                 actions = {a: outputs[-1][a].get("mean_actions", outputs[0][a]) for a in env.possible_agents}
