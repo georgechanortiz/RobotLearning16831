@@ -13,8 +13,8 @@ a more user-friendly way.
 """Launch Isaac Sim Simulator first."""
 
 # Example Usage:
-# python scripts/skrl/play.py --task=Random-Agent-Unitree-Go2-Play-v0 --num_envs=16 --checkpoint=logs/skrl/go2_flat_ppo/2026-02-08_14-15-29_ppo_torch/checkpoints/best_agent.pt
-
+# python scripts/skrl/play.py --task=Random-Agent-Unitree-Go2-Play-v0 --num_envs=16 --checkpoint=logs/skrl/go2_flat_ppo/2026-02-10_09-17-30_ppo_torch/checkpoints/best_agent.pt
+# python scripts/skrl/play.py --task=Random-Agent-Unitree-Go2-Play-v0 --num_envs=16 --checkpoint=logs/skrl/go2_flat_ppo/2026-03-18_11-18-16_ppo_torch/checkpoints/best_agent.pt
 
 
 import argparse

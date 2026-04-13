@@ -45,10 +45,10 @@ agent:
   mini_batches: 4
   discount_factor: 0.99
   lambda: 0.95
-  learning_rate: 0 # ZERO FOR RANDOM AGENT - No update # 1.0e-3        # Higher initial LR works well with Adaptive Scheduler
-  # learning_rate_scheduler: KLAdaptiveLR
-  # learning_rate_scheduler_kwargs:
-  #   kl_threshold: 0.008
+  learning_rate: 1.0e-3        # Higher initial LR works well with Adaptive Scheduler
+  learning_rate_scheduler: KLAdaptiveLR
+  learning_rate_scheduler_kwargs:
+    kl_threshold: 0.008
   state_preprocessor: RunningStandardScaler
   state_preprocessor_kwargs: null
   value_preprocessor: RunningStandardScaler

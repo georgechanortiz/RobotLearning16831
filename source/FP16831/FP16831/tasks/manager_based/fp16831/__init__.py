@@ -25,7 +25,7 @@ gym.register(
 )
 
 gym.register(
-    id="Random-Agent-Unitree-Go2-v0",
+    id="Flat-Unitree-Go2-train-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={

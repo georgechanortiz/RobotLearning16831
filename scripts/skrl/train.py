@@ -15,7 +15,7 @@ a more user-friendly way.
 """Launch Isaac Sim Simulator first."""
 
 # Example Script Usage:
-# python scripts/skrl/train.py --task=Template-Fp16831-v0 --num_envs=4096 --headless
+# python scripts/skrl/train.py --task=Random-Agent-Unitree-Go2-v0 --num_envs=4096 --headless
 
 
 import argparse
