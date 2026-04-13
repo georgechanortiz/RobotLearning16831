@@ -17,7 +17,15 @@ from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.scene import InteractiveSceneCfg
-from isaaclab.sensors import ContactSensorCfg, RayCasterCfg, patterns
+from isaaclab.sensors import ContactSensorCfg
+try:
+    from isaaclab.sensors import RayCasterCfg, patterns
+except ImportError:
+    try:
+        from isaaclab.sensors.ray_caster import RayCasterCfg, patterns
+    except ImportError:
+        RayCasterCfg = None
+        patterns = None
 from isaaclab.terrains import TerrainImporterCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
@@ -59,14 +67,17 @@ class MySceneCfg(InteractiveSceneCfg):
     # robots
     robot: ArticulationCfg = MISSING
     # sensors
-    height_scanner = RayCasterCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/base",
-        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
-        ray_alignment="yaw",
-        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
-        debug_vis=False,
-        mesh_prim_paths=["/World/ground"],
-    )
+    if RayCasterCfg is not None and patterns is not None:
+        height_scanner = RayCasterCfg(
+            prim_path="{ENV_REGEX_NS}/Robot/base",
+            offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
+            ray_alignment="yaw",
+            pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
+            debug_vis=False,
+            mesh_prim_paths=["/World/ground"],
+        )
+    else:
+        height_scanner = None
 
     # lights
     sky_light = AssetBaseCfg(
@@ -123,7 +134,10 @@ class ObservationsCfg:
         joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
         actions = ObsTerm(func=mdp.last_action)
-        height_scan = ObsTerm(func=mdp.height_scan, params={"sensor_cfg": SceneEntityCfg("height_scanner")}, noise=Unoise(n_min=-0.1, n_max=0.1), clip=(-1.0, 1.0))
+        if RayCasterCfg is not None:
+            height_scan = ObsTerm(func=mdp.height_scan, params={"sensor_cfg": SceneEntityCfg("height_scanner")}, noise=Unoise(n_min=-0.1, n_max=0.1), clip=(-1.0, 1.0))
+        else:
+            height_scan = None
 
 
 
@@ -280,7 +294,14 @@ class LocomotionVelocityRoughEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.dt = 0.005
         self.sim.render_interval = self.decimation
         self.sim.physics_material = self.scene.terrain.physics_material
-        self.sim.physx.gpu_max_rigid_patch_count = 10 * 2**15
+        if hasattr(self.sim, "physx") and self.sim.physx is not None:
+            self.sim.physx.gpu_max_rigid_patch_count = 10 * 2**15
+        if hasattr(self.sim, "newton_cfg") and getattr(self.sim.newton_cfg, "solver_cfg", None) is not None:
+            # Isaac Lab's Newton/MuJoCo backend needs explicit contact budget on this task.
+            if hasattr(self.sim.newton_cfg.solver_cfg, "nconmax"):
+                self.sim.newton_cfg.solver_cfg.nconmax = 256
+            if hasattr(self.sim.newton_cfg.solver_cfg, "njmax"):
+                self.sim.newton_cfg.solver_cfg.njmax = max(self.sim.newton_cfg.solver_cfg.njmax, 512)
         # update sensor update periods
         # we tick all the sensors based on the smallest update period (physics update period)
         if self.scene.height_scanner is not None:

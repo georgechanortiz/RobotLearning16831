@@ -21,6 +21,16 @@ class UnitreeGo2RandFlatEnvCfg(UnitreeGo2RoughEnvCfg):
         # change terrain to flat
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None
+        # disable startup randomization terms that are incompatible with the installed Isaac Lab event API
+        self.events.physics_material = None
+        self.events.add_base_mass = None
+        self.events.base_com = None
+        self.events.base_external_force_torque = None
+        # disable contact-sensor-dependent terms for current Isaac Lab/Newton compatibility
+        self.scene.contact_forces = None
+        self.rewards.feet_air_time = None
+        self.rewards.undesired_contacts = None
+        self.terminations.base_contact = None
         # no height scan
         self.scene.height_scanner = None
         self.observations.policy.height_scan = None

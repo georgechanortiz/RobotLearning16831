@@ -93,8 +93,14 @@ def get_action_bounds(action_space: gym.Space, device: torch.device, action_dim:
     if low is None or high is None:
         return -torch.ones(action_dim, device=device), torch.ones(action_dim, device=device)
 
-    low_t = torch.as_tensor(low, dtype=torch.float32, device=device).view(-1)
-    high_t = torch.as_tensor(high, dtype=torch.float32, device=device).view(-1)
+    low_t = torch.as_tensor(low, dtype=torch.float32, device=device)
+    high_t = torch.as_tensor(high, dtype=torch.float32, device=device)
+    if low_t.ndim > 1:
+        low_t = low_t[0]
+    if high_t.ndim > 1:
+        high_t = high_t[0]
+    low_t = low_t.view(-1)
+    high_t = high_t.view(-1)
     low_t = torch.where(torch.isfinite(low_t), low_t, -torch.ones_like(low_t))
     high_t = torch.where(torch.isfinite(high_t), high_t, torch.ones_like(high_t))
     return low_t, high_t
@@ -137,7 +143,8 @@ def main() -> None:
     obs, _ = env.reset()
     obs = flatten_obs(obs, device)
     num_envs = obs.shape[0]
-    action_dim = int(np.prod(env.action_space.shape))
+    action_shape = env.action_space.shape
+    action_dim = int(action_shape[-1]) if len(action_shape) > 0 else int(np.prod(action_shape))
     obs_dim = obs.shape[-1]
 
     action_low, action_high = get_action_bounds(env.action_space, device, action_dim)
@@ -174,7 +181,10 @@ def main() -> None:
         for key, value in sorted(vars(args_cli).items()):
             f.write(f"{key}: {value}\n")
 
-    while simulation_app.is_running() and train_state.env_steps < args_cli.train_steps:
+    def app_is_running() -> bool:
+        return simulation_app is None or simulation_app.is_running()
+
+    while app_is_running() and train_state.env_steps < args_cli.train_steps:
         with torch.inference_mode():
             if train_state.env_steps < args_cli.seed_steps or len(replay) < args_cli.batch_size:
                 actions = random_actions(obs.shape[0], action_low, action_high)
@@ -277,4 +287,5 @@ if __name__ == "__main__":
     try:
         main()
     finally:
-        simulation_app.close()
+        if simulation_app is not None:
+            simulation_app.close()
