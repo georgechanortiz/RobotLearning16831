@@ -1,3 +1,0 @@
-env_steps,gradient_updates,episodes_finished,buffer_size,mean_return_100,mean_length_100,best_mean_return,loss,delta_loss,reward_loss,continue_loss
-10,0,0,40,0.0,0.0,0.0,0.0,0.0,0.0,0.0
-20,0,0,80,0.0,0.0,0.0,0.0,0.0,0.0,0.0

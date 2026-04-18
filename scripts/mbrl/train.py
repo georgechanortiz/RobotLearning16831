@@ -20,18 +20,21 @@ parser.add_argument("--num_envs", type=int, default=64, help="Number of environm
 parser.add_argument("--task", type=str, default="Flat-Unitree-Go2-train-v0", help="Name of the task.")
 parser.add_argument("--seed", type=int, default=42, help="Seed used for training.")
 parser.add_argument("--buffer_capacity", type=int, default=300000, help="Replay buffer capacity.")
-parser.add_argument("--seed_steps", type=int, default=25, help="Initial random environment steps before planning.")
+parser.add_argument("--seed_steps", type=int, default=50, help="Initial random environment steps before planning.")
 parser.add_argument("--train_steps", type=int, default=400, help="Number of environment interaction steps.")
 parser.add_argument("--updates_per_step", type=int, default=8, help="Model updates after each environment step.")
 parser.add_argument("--batch_size", type=int, default=4096, help="Replay batch size.")
 parser.add_argument("--hidden_dim", type=int, default=512, help="Dynamics ensemble hidden dimension.")
 parser.add_argument("--model_depth", type=int, default=3, help="Number of hidden layers per ensemble member.")
 parser.add_argument("--ensemble_size", type=int, default=5, help="Number of dynamics models in the ensemble.")
-parser.add_argument("--horizon", type=int, default=10, help="Planning horizon in environment steps.")
-parser.add_argument("--candidates", type=int, default=256, help="Candidate action sequences for CEM.")
-parser.add_argument("--elites", type=int, default=32, help="Elite sequences kept each CEM iteration.")
-parser.add_argument("--cem_iterations", type=int, default=4, help="CEM refinement iterations.")
+parser.add_argument("--planner", type=str, default="mppi", choices=["cem", "mppi"], help="Sampling-based planner.")
+parser.add_argument("--horizon", type=int, default=30, help="Planning horizon in environment steps.")
+parser.add_argument("--candidates", type=int, default=512, help="Candidate action sequences for planning.")
+parser.add_argument("--elites", type=int, default=64, help="Elite sequences kept each CEM iteration.")
+parser.add_argument("--planner_iterations", type=int, default=5, help="Planner refinement iterations.")
 parser.add_argument("--discount", type=float, default=0.99, help="Planning discount factor.")
+parser.add_argument("--planner_temperature", type=float, default=0.35, help="Initial planner exploration scale.")
+parser.add_argument("--mppi_lambda", type=float, default=1.0, help="MPPI reward temperature.")
 parser.add_argument("--lr", type=float, default=3e-4, help="Dynamics model learning rate.")
 parser.add_argument("--eval_interval", type=int, default=10, help="Steps between console/log summaries.")
 parser.add_argument("--save_interval", type=int, default=50, help="Steps between checkpoints.")
@@ -49,7 +52,7 @@ import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils import parse_env_cfg
 
 import FP16831.tasks  # noqa: F401
-from FP16831.mbrl import CEMPlanner, DynamicsEnsemble, ReplayBuffer
+from FP16831.mbrl import DynamicsEnsemble, ReplayBuffer, build_planner
 
 
 @dataclass
@@ -159,15 +162,18 @@ def main() -> None:
     ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args_cli.lr)
     model.eval()
-    planner = CEMPlanner(
+    planner = build_planner(
+        planner_name=args_cli.planner,
         model=model,
         action_low=action_low,
         action_high=action_high,
         horizon=args_cli.horizon,
         candidates=args_cli.candidates,
         elites=args_cli.elites,
-        iterations=args_cli.cem_iterations,
+        iterations=args_cli.planner_iterations,
         discount=args_cli.discount,
+        temperature=args_cli.planner_temperature,
+        lambda_=args_cli.mppi_lambda,
     )
 
     train_state = TrainState()
