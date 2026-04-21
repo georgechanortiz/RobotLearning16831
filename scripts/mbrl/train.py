@@ -9,6 +9,7 @@ import argparse
 import csv
 import os
 import random
+import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
 
@@ -130,6 +131,15 @@ def append_metrics(csv_path: str, row: dict[str, float | int]) -> None:
         writer.writerow(row)
 
 
+def format_duration(seconds: float) -> str:
+    total_seconds = max(0, int(seconds))
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours > 0:
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    return f"{minutes:02d}:{seconds:02d}"
+
+
 def main() -> None:
     set_seed(args_cli.seed)
     env_cfg = parse_env_cfg(
@@ -182,6 +192,7 @@ def main() -> None:
     recent_returns: list[float] = []
     recent_lengths: list[float] = []
     latest_losses = {"loss": 0.0, "delta_loss": 0.0, "reward_loss": 0.0, "continue_loss": 0.0}
+    train_start_time = time.monotonic()
 
     with open(os.path.join(log_dir, "config.txt"), "w", encoding="utf-8") as f:
         for key, value in sorted(vars(args_cli).items()):
@@ -243,6 +254,10 @@ def main() -> None:
             mean_return = float(np.mean(recent_returns[-100:])) if recent_returns else 0.0
             mean_length = float(np.mean(recent_lengths[-100:])) if recent_lengths else 0.0
             train_state.best_mean_return = max(train_state.best_mean_return, mean_return)
+            elapsed_s = time.monotonic() - train_start_time
+            remaining_steps = max(args_cli.train_steps - train_state.env_steps, 0)
+            steps_per_second = train_state.env_steps / max(elapsed_s, 1e-6)
+            eta_s = remaining_steps / max(steps_per_second, 1e-6)
             row = {
                 "env_steps": train_state.env_steps,
                 "gradient_updates": train_state.gradient_updates,
@@ -261,7 +276,9 @@ def main() -> None:
                 f"episodes={train_state.episodes_finished} "
                 f"return100={mean_return:.3f} "
                 f"len100={mean_length:.2f} "
-                f"loss={latest_losses['loss']:.4f}"
+                f"loss={latest_losses['loss']:.4f} "
+                f"elapsed={format_duration(elapsed_s)} "
+                f"eta={format_duration(eta_s)}"
             )
 
         if train_state.env_steps % args_cli.save_interval == 0:
