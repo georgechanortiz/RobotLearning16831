@@ -121,6 +121,7 @@ from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
 import FP16831.tasks  # noqa: F401
+from FP16831.tasks.manager_based.fp16831.agents.hierarchical_gait_model import build_hierarchical_gait_runner
 
 # config shortcuts
 if args_cli.agent is None:
@@ -209,7 +210,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
     experiment_cfg["trainer"]["close_environment_at_exit"] = False
     experiment_cfg["agent"]["experiment"]["write_interval"] = 0  # don't log to TensorBoard
     experiment_cfg["agent"]["experiment"]["checkpoint_interval"] = 0  # don't generate checkpoints
-    runner = Runner(env, experiment_cfg)
+    if experiment_cfg.get("custom_model") == "hierarchical_gait":
+        runner = build_hierarchical_gait_runner(env, experiment_cfg)
+    else:
+        runner = Runner(env, experiment_cfg)
 
     print(f"[INFO] Loading model checkpoint from: {resume_path}")
     runner.agent.load(resume_path)
@@ -219,6 +223,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
     # reset environment
     obs, _ = env.reset()
     timestep = 0
+    log_gaits = experiment_cfg.get("custom_model") == "hierarchical_gait"
     # simulate environment
     while simulation_app.is_running():
         start_time = time.time()
@@ -232,11 +237,16 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
                 actions = {a: outputs[-1][a].get("mean_actions", outputs[0][a]) for a in env.possible_agents}
             # - single-agent (deterministic) actions
             else:
-                actions = outputs[-1].get("mean_actions", outputs[0])
+                extras = outputs[-1]
+                actions = extras.get("mean_actions", outputs[0])
+                if log_gaits and timestep % 100 == 0 and "gait_id" in extras:
+                    gait_ids = extras["gait_id"].detach().flatten().cpu()
+                    counts = torch.bincount(gait_ids, minlength=experiment_cfg["hierarchical_gait"]["num_gaits"])
+                    print(f"[INFO] Learned gait usage at step {timestep}: {counts.tolist()}")
             # env stepping
             obs, _, _, _, _ = env.step(actions)
+        timestep += 1
         if args_cli.video:
-            timestep += 1
             # exit the play loop after recording one video
             if timestep == args_cli.video_length:
                 break

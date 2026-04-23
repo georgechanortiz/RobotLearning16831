@@ -66,6 +66,7 @@ import skrl
 from packaging import version
 
 import FP16831 # noqa: F401
+from FP16831.tasks.manager_based.fp16831.agents.hierarchical_gait_model import build_hierarchical_gait_runner
 
 # check for minimum supported skrl version
 SKRL_VERSION = "1.4.3"
@@ -195,7 +196,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     # configure and instantiate the skrl runner
     # https://skrl.readthedocs.io/en/latest/api/utils/runner.html
-    runner = Runner(env, agent_cfg)
+    if agent_cfg.get("custom_model") == "hierarchical_gait":
+        runner = build_hierarchical_gait_runner(env, agent_cfg)
+    else:
+        runner = Runner(env, agent_cfg)
 
     # load checkpoint (if specified)
     if resume_path:

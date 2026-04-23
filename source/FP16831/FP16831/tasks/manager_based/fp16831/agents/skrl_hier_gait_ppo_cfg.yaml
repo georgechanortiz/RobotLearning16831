@@ -1,0 +1,50 @@
+seed: 42
+
+# Custom model path used by scripts/skrl/train.py and scripts/skrl/play.py.
+custom_model: hierarchical_gait
+
+hierarchical_gait:
+  num_gaits: 4
+  hidden_dims: [128, 128, 128]
+  initial_log_std: 0.0
+
+memory:
+  class: RandomMemory
+  memory_size: -1
+
+agent:
+  class: PPO
+  rollouts: 24
+  learning_epochs: 5
+  mini_batches: 4
+  discount_factor: 0.99
+  lambda: 0.95
+  learning_rate: 1.0e-3
+  learning_rate_scheduler: KLAdaptiveLR
+  learning_rate_scheduler_kwargs:
+    kl_threshold: 0.008
+  state_preprocessor: RunningStandardScaler
+  state_preprocessor_kwargs: null
+  value_preprocessor: RunningStandardScaler
+  value_preprocessor_kwargs: null
+  random_timesteps: 0
+  learning_starts: 0
+  grad_norm_clip: 1.0
+  ratio_clip: 0.2
+  value_clip: 0.2
+  clip_predicted_values: True
+  entropy_loss_scale: 0.01
+  value_loss_scale: 1.0
+  kl_threshold: 0.0
+  rewards_shaper_scale: 1.0
+  time_limit_bootstrap: False
+  experiment:
+    directory: "go2_hier_gait_ppo"
+    experiment_name: ""
+    write_interval: 100
+    checkpoint_interval: 2000
+
+trainer:
+  class: SequentialTrainer
+  timesteps: 4800
+  environment_info: log
