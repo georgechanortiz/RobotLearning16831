@@ -15,8 +15,12 @@ class UnitreeGo2RandFlatEnvCfg(UnitreeGo2RoughEnvCfg):
         super().__post_init__()
 
         # override rewards
-        self.rewards.flat_orientation_l2.weight = -2.5
+        self.rewards.flat_orientation_l2.weight = -3.0
         self.rewards.feet_air_time.weight = 0.25
+        self.rewards.feet_slide.weight = -0.08
+        self.rewards.foot_contact_impact.weight = -2.0e-5
+        self.rewards.contact_mode_change.weight = -0.03
+        self.rewards.action_rate_l2.weight = -0.03
 
         # change terrain to flat
         self.scene.terrain.terrain_type = "plane"
@@ -26,11 +30,6 @@ class UnitreeGo2RandFlatEnvCfg(UnitreeGo2RoughEnvCfg):
         self.events.add_base_mass = None
         self.events.base_com = None
         self.events.base_external_force_torque = None
-        # disable contact-sensor-dependent terms for current Isaac Lab/Newton compatibility
-        self.scene.contact_forces = None
-        self.rewards.feet_air_time = None
-        self.rewards.undesired_contacts = None
-        self.terminations.base_contact = None
         # no height scan
         self.scene.height_scanner = None
         self.observations.policy.height_scan = None
