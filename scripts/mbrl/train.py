@@ -48,6 +48,7 @@ simulation_app = app_launcher.app
 import gymnasium as gym
 import numpy as np
 import torch
+from torch.utils.tensorboard import SummaryWriter
 
 import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils import parse_env_cfg
@@ -140,6 +141,22 @@ def format_duration(seconds: float) -> str:
     return f"{minutes:02d}:{seconds:02d}"
 
 
+def infer_episode_horizon_steps(env: gym.Env, env_cfg: object) -> float:
+    """Infer the max episode length so dense step rewards can be shown on a return scale."""
+    max_episode_length = getattr(env.unwrapped, "max_episode_length", None)
+    if max_episode_length is not None:
+        return float(max_episode_length)
+
+    episode_length_s = getattr(env_cfg, "episode_length_s", None)
+    sim_cfg = getattr(env_cfg, "sim", None)
+    sim_dt = getattr(sim_cfg, "dt", None)
+    decimation = getattr(env_cfg, "decimation", None)
+    if episode_length_s is not None and sim_dt is not None and decimation is not None:
+        return float(episode_length_s) / (float(sim_dt) * float(decimation))
+
+    return 1.0
+
+
 def main() -> None:
     set_seed(args_cli.seed)
     env_cfg = parse_env_cfg(
@@ -152,6 +169,8 @@ def main() -> None:
     device = torch.device(env.unwrapped.device)
     log_dir = make_log_dir()
     metrics_path = os.path.join(log_dir, "metrics.csv")
+    writer = SummaryWriter(log_dir=log_dir)
+    episode_horizon_steps = infer_episode_horizon_steps(env, env_cfg)
 
     obs, _ = env.reset()
     obs = flatten_obs(obs, device)
@@ -191,6 +210,7 @@ def main() -> None:
     episode_lengths = torch.zeros(num_envs, dtype=torch.float32, device=device)
     recent_returns: list[float] = []
     recent_lengths: list[float] = []
+    recent_step_rewards: list[float] = []
     latest_losses = {"loss": 0.0, "delta_loss": 0.0, "reward_loss": 0.0, "continue_loss": 0.0}
     train_start_time = time.monotonic()
 
@@ -224,6 +244,7 @@ def main() -> None:
                 continues.detach().cpu(),
             )
 
+            recent_step_rewards.append(float(rewards.mean().item()))
             episode_returns += rewards.squeeze(-1)
             episode_lengths += 1
             if done.any():
@@ -253,6 +274,10 @@ def main() -> None:
         if train_state.env_steps % args_cli.eval_interval == 0:
             mean_return = float(np.mean(recent_returns[-100:])) if recent_returns else 0.0
             mean_length = float(np.mean(recent_lengths[-100:])) if recent_lengths else 0.0
+            mean_step_reward_100 = float(np.mean(recent_step_rewards[-100:])) if recent_step_rewards else 0.0
+            current_return_mean = float(episode_returns.mean().item())
+            current_length_mean = float(episode_lengths.mean().item())
+            estimated_return_100 = mean_step_reward_100 * episode_horizon_steps
             train_state.best_mean_return = max(train_state.best_mean_return, mean_return)
             elapsed_s = time.monotonic() - train_start_time
             remaining_steps = max(args_cli.train_steps - train_state.env_steps, 0)
@@ -265,16 +290,34 @@ def main() -> None:
                 "buffer_size": len(replay),
                 "mean_return_100": mean_return,
                 "mean_length_100": mean_length,
+                "mean_step_reward_100": mean_step_reward_100,
+                "estimated_return_100": estimated_return_100,
+                "current_return_mean": current_return_mean,
+                "current_length_mean": current_length_mean,
                 "best_mean_return": train_state.best_mean_return,
                 **latest_losses,
             }
             append_metrics(metrics_path, row)
+            writer.add_scalar("Reward / total_reward_mean", estimated_return_100, train_state.env_steps)
+            writer.add_scalar("Reward / completed_total_reward_mean", mean_return, train_state.env_steps)
+            writer.add_scalar("Reward / step_reward_mean", mean_step_reward_100, train_state.env_steps)
+            writer.add_scalar("Episode / episode_length_mean", mean_length, train_state.env_steps)
+            writer.add_scalar("Episode / current_episode_return_mean", current_return_mean, train_state.env_steps)
+            writer.add_scalar("Episode / current_episode_length_mean", current_length_mean, train_state.env_steps)
+            writer.add_scalar("Train / gradient_updates", train_state.gradient_updates, train_state.env_steps)
+            writer.add_scalar("Train / buffer_size", len(replay), train_state.env_steps)
+            writer.add_scalar("Train / episodes_finished", train_state.episodes_finished, train_state.env_steps)
+            for loss_name, loss_value in latest_losses.items():
+                writer.add_scalar(f"Loss / {loss_name}", loss_value, train_state.env_steps)
+            writer.flush()
             print(
                 "[MBRL] "
                 f"step={train_state.env_steps} "
                 f"buffer={len(replay)} "
                 f"episodes={train_state.episodes_finished} "
                 f"return100={mean_return:.3f} "
+                f"estimated_return100={estimated_return_100:.3f} "
+                f"step_reward100={mean_step_reward_100:.3f} "
                 f"len100={mean_length:.2f} "
                 f"loss={latest_losses['loss']:.4f} "
                 f"elapsed={format_duration(elapsed_s)} "
@@ -303,6 +346,7 @@ def main() -> None:
         },
         final_path,
     )
+    writer.close()
     env.close()
 
 

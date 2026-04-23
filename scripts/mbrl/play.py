@@ -150,8 +150,9 @@ def main() -> None:
     model.load_state_dict(checkpoint["model"])
     model.eval()
 
+    planner_name = checkpoint_args.get("planner", "mppi")
     planner = build_planner(
-        planner_name=checkpoint_args.get("planner", "cem"),
+        planner_name=planner_name,
         model=model,
         action_low=action_low,
         action_high=action_high,
@@ -176,6 +177,7 @@ def main() -> None:
 
     print(f"[INFO] Loaded checkpoint: {checkpoint_path}")
     print(f"[INFO] Evaluating task={task_name} num_envs={args_cli.num_envs} num_episodes={args_cli.num_episodes}")
+    print(f"[INFO] Planner={planner_name}")
 
     steps = 0
     while (
