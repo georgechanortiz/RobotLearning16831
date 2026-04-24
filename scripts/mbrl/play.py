@@ -27,6 +27,15 @@ parser.add_argument("--seed", type=int, default=None, help="Seed used for the en
 parser.add_argument("--num_episodes", type=int, default=5, help="Number of completed episodes to evaluate.")
 parser.add_argument("--max_steps", type=int, default=4000, help="Maximum environment steps to run.")
 parser.add_argument("--real-time", action="store_true", default=False, help="Run in real-time, if possible.")
+parser.add_argument("--command_x", type=float, default=None, help="Fixed forward velocity command in m/s.")
+parser.add_argument("--command_y", type=float, default=None, help="Fixed lateral velocity command in m/s.")
+parser.add_argument("--command_yaw", type=float, default=None, help="Fixed yaw velocity command in rad/s.")
+parser.add_argument(
+    "--wander",
+    action="store_true",
+    default=False,
+    help="Sample nonzero movement commands instead of using the play environment's standing/heading mix.",
+)
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
@@ -99,6 +108,26 @@ def infer_play_task(train_task: str | None) -> str:
     return train_task or "Random-Agent-Unitree-Go2-Play-v0"
 
 
+def apply_fixed_velocity_command(env_cfg: object) -> None:
+    if not args_cli.wander and args_cli.command_x is None and args_cli.command_y is None and args_cli.command_yaw is None:
+        return
+
+    command_cfg = env_cfg.commands.base_velocity
+    if args_cli.wander:
+        command_cfg.ranges.lin_vel_x = (-0.8, 0.8)
+        command_cfg.ranges.lin_vel_y = (-0.4, 0.4)
+        command_cfg.ranges.ang_vel_z = (-0.8, 0.8)
+        command_cfg.resampling_time_range = (3.0, 5.0)
+    else:
+        command_cfg.ranges.lin_vel_x = (args_cli.command_x or 0.0, args_cli.command_x or 0.0)
+        command_cfg.ranges.lin_vel_y = (args_cli.command_y or 0.0, args_cli.command_y or 0.0)
+        command_cfg.ranges.ang_vel_z = (args_cli.command_yaw or 0.0, args_cli.command_yaw or 0.0)
+    command_cfg.heading_command = False
+    command_cfg.rel_heading_envs = 0.0
+    command_cfg.rel_standing_envs = 0.0
+    command_cfg.debug_vis = True
+
+
 def main() -> None:
     checkpoint_path = os.path.abspath(args_cli.checkpoint)
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
@@ -117,6 +146,7 @@ def main() -> None:
         use_fabric=use_fabric,
     )
     env_cfg.seed = seed
+    apply_fixed_velocity_command(env_cfg)
 
     render_mode = "rgb_array" if args_cli.video else None
     env = gym.make(task_name, cfg=env_cfg, render_mode=render_mode)

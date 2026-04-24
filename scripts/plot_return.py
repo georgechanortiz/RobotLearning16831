@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -10,16 +12,26 @@ import matplotlib.pyplot as plt
 RAND_AGENT_FILEPATH = "logs/go2_flat_ppo_2026-02-08_14-15-29_ppo_torch_rand.csv"
 PPO_AGENT_FILEPATH = "logs/go2_flat_ppo_2026-03-18_11-18-16_ppo_torch.csv"
 SAC_AGENT_FILEPATH = "logs/skrl_go2_flat_sac_2026-03-22_21-23-29_sac_torch-total_reward_mean.csv"
-MBRL_AGENT_FILEPATH = "logs/mbrl/go2_walk_2026-04-21_22-33-51/metrics.csv"
+GAIT_PPO_FILEPATH = "logs/skrl_go2_hier_gait_ppo_2026-04-22_23-44-38_hier_gait_torch-total_reward_mean.csv"
+REWARD_PPO_FILEPATH = "logs/skrl_go2_flat_ppo_2026-04-22_23-59-24_ppo_torch-total_reward_mean.csv"
 OUTPUT_FILEPATH = "training_quality_comparison.png"
 
 COLORS = {
     "random": "#b91c1c",
     "ppo": "#2563eb",
+    "ppo_gait": "#7c3aed",
+    "ppo_reward": "#db2777",
     "sac": "#f97316",
     "mbrl": "#16a34a",
     "mbrl_aux": "#15803d",
 }
+
+
+def latest_mbrl_metrics_filepath() -> str:
+    candidates = sorted(Path("logs/mbrl").glob("*/metrics.csv"))
+    if not candidates:
+        raise FileNotFoundError("No MBRL metrics.csv files found under logs/mbrl")
+    return str(max(candidates, key=lambda path: path.stat().st_mtime))
 
 
 def load_tensorboard_csv(filepath: str, label: str) -> pd.DataFrame:
@@ -66,22 +78,29 @@ def plot_return_curve(ax: plt.Axes, df: pd.DataFrame, label: str, color: str, x_
 
 
 def main() -> None:
+    mbrl_agent_filepath = latest_mbrl_metrics_filepath()
     rand_agent = pd.read_csv(RAND_AGENT_FILEPATH)
     ppo_agent = load_tensorboard_csv(PPO_AGENT_FILEPATH, "PPO")
+    gait_ppo_agent = load_tensorboard_csv(GAIT_PPO_FILEPATH, "Hierarchical gait modification")
+    reward_ppo_agent = load_tensorboard_csv(REWARD_PPO_FILEPATH, "Gait reward modification")
     sac_agent = load_tensorboard_csv(SAC_AGENT_FILEPATH, "SAC")
-    mbrl_agent = load_mbrl_csv(MBRL_AGENT_FILEPATH)
+    mbrl_agent = load_mbrl_csv(mbrl_agent_filepath)
 
     random_mean = rand_agent["Value"].mean()
     final_scores = pd.DataFrame(
         {
-            "method": ["PPO", "SAC", "MBRL"],
+            "method": ["PPO", "Hier gait mod", "Reward mod", "SAC", "MBRL"],
             "final_return": [
                 ppo_agent["return"].iloc[-1],
+                gait_ppo_agent["return"].iloc[-1],
+                reward_ppo_agent["return"].iloc[-1],
                 sac_agent["return"].iloc[-1],
                 mbrl_agent["return"].iloc[-1],
             ],
             "best_return": [
                 ppo_agent["return"].max(),
+                gait_ppo_agent["return"].max(),
+                reward_ppo_agent["return"].max(),
                 sac_agent["return"].max(),
                 mbrl_agent["return"].max(),
             ],
@@ -90,11 +109,13 @@ def main() -> None:
 
     plt.style.use("seaborn-v0_8-whitegrid")
     fig, axes = plt.subplots(2, 2, figsize=(13, 9))
-    fig.suptitle("Training Quality Comparison: PPO vs SAC vs MBRL", fontsize=16, fontweight="bold")
+    fig.suptitle("Training Quality Comparison: PPO Variants vs SAC vs MBRL", fontsize=16, fontweight="bold")
 
     ax = axes[0, 0]
     ax.axhline(random_mean, color=COLORS["random"], linestyle="--", linewidth=1.5, label="Random baseline")
     plot_return_curve(ax, ppo_agent, "PPO", COLORS["ppo"])
+    plot_return_curve(ax, gait_ppo_agent, "Hierarchical gait modification", COLORS["ppo_gait"])
+    plot_return_curve(ax, reward_ppo_agent, "Gait reward modification", COLORS["ppo_reward"])
     plot_return_curve(ax, sac_agent, "SAC", COLORS["sac"])
     plot_return_curve(ax, mbrl_agent, "MBRL dense return", COLORS["mbrl"])
     ax.step(
@@ -114,6 +135,8 @@ def main() -> None:
     ax = axes[0, 1]
     ax.axhline(random_mean, color=COLORS["random"], linestyle="--", linewidth=1.5, label="Random baseline")
     plot_return_curve(ax, ppo_agent, "PPO", COLORS["ppo"], x_col="progress")
+    plot_return_curve(ax, gait_ppo_agent, "Hierarchical gait modification", COLORS["ppo_gait"], x_col="progress")
+    plot_return_curve(ax, reward_ppo_agent, "Gait reward modification", COLORS["ppo_reward"], x_col="progress")
     plot_return_curve(ax, sac_agent, "SAC", COLORS["sac"], x_col="progress")
     plot_return_curve(ax, mbrl_agent, "MBRL dense return", COLORS["mbrl"], x_col="progress")
     ax.step(
@@ -137,7 +160,7 @@ def main() -> None:
         [i - width / 2 for i in x],
         final_scores["final_return"],
         width=width,
-        color=[COLORS["ppo"], COLORS["sac"], COLORS["mbrl"]],
+        color=[COLORS["ppo"], COLORS["ppo_gait"], COLORS["ppo_reward"], COLORS["sac"], COLORS["mbrl"]],
         alpha=0.78,
         label="Final return",
     )
@@ -145,7 +168,7 @@ def main() -> None:
         [i + width / 2 for i in x],
         final_scores["best_return"],
         width=width,
-        color=[COLORS["ppo"], COLORS["sac"], COLORS["mbrl"]],
+        color=[COLORS["ppo"], COLORS["ppo_gait"], COLORS["ppo_reward"], COLORS["sac"], COLORS["mbrl"]],
         alpha=0.35,
         label="Best return",
     )
@@ -194,6 +217,7 @@ def main() -> None:
     )
     fig.tight_layout(rect=[0, 0.04, 1, 0.95])
     fig.savefig(OUTPUT_FILEPATH, dpi=200)
+    print(f"Saved comparison plot to {OUTPUT_FILEPATH} using MBRL data from {mbrl_agent_filepath}")
     plt.show()
 
 

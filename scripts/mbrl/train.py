@@ -39,6 +39,15 @@ parser.add_argument("--mppi_lambda", type=float, default=1.0, help="MPPI reward 
 parser.add_argument("--lr", type=float, default=3e-4, help="Dynamics model learning rate.")
 parser.add_argument("--eval_interval", type=int, default=10, help="Steps between console/log summaries.")
 parser.add_argument("--save_interval", type=int, default=50, help="Steps between checkpoints.")
+parser.add_argument("--command_x", type=float, default=None, help="Fixed forward velocity command in m/s.")
+parser.add_argument("--command_y", type=float, default=None, help="Fixed lateral velocity command in m/s.")
+parser.add_argument("--command_yaw", type=float, default=None, help="Fixed yaw velocity command in rad/s.")
+parser.add_argument(
+    "--wander",
+    action="store_true",
+    default=False,
+    help="Sample nonzero movement commands instead of using the default standing/heading mix.",
+)
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
@@ -123,6 +132,25 @@ def make_log_dir() -> str:
     return log_dir
 
 
+def apply_fixed_velocity_command(env_cfg: object) -> None:
+    if not args_cli.wander and args_cli.command_x is None and args_cli.command_y is None and args_cli.command_yaw is None:
+        return
+
+    command_cfg = env_cfg.commands.base_velocity
+    if args_cli.wander:
+        command_cfg.ranges.lin_vel_x = (-0.8, 0.8)
+        command_cfg.ranges.lin_vel_y = (-0.4, 0.4)
+        command_cfg.ranges.ang_vel_z = (-0.8, 0.8)
+        command_cfg.resampling_time_range = (3.0, 5.0)
+    else:
+        command_cfg.ranges.lin_vel_x = (args_cli.command_x or 0.0, args_cli.command_x or 0.0)
+        command_cfg.ranges.lin_vel_y = (args_cli.command_y or 0.0, args_cli.command_y or 0.0)
+        command_cfg.ranges.ang_vel_z = (args_cli.command_yaw or 0.0, args_cli.command_yaw or 0.0)
+    command_cfg.heading_command = False
+    command_cfg.rel_heading_envs = 0.0
+    command_cfg.rel_standing_envs = 0.0
+
+
 def append_metrics(csv_path: str, row: dict[str, float | int]) -> None:
     write_header = not os.path.exists(csv_path)
     with open(csv_path, "a", newline="", encoding="utf-8") as f:
@@ -165,6 +193,7 @@ def main() -> None:
         num_envs=args_cli.num_envs,
         use_fabric=not args_cli.disable_fabric,
     )
+    apply_fixed_velocity_command(env_cfg)
     env = gym.make(args_cli.task, cfg=env_cfg)
     device = torch.device(env.unwrapped.device)
     log_dir = make_log_dir()
